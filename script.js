@@ -279,6 +279,8 @@ minusBtn.addEventListener("click", () => {
 playBtn.addEventListener("click", async () => {
   await initAudio();
 
+  playSound();
+
   if (isPlaying) {
     stop();
   } else {
