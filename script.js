@@ -30,11 +30,16 @@ async function initAudio() {
   }
 
   // iOS向け：無音バッファを1回流して音声出力を解放
-  const buffer = audioCtx.createBuffer(1, 1, 22050);
-  const source = audioCtx.createBufferSource();
-  source.buffer = buffer;
-  source.connect(audioCtx.destination);
+const buffer = audioCtx.createBuffer(1, 1, 22050);
+const source = audioCtx.createBufferSource();
+source.buffer = buffer;
+source.connect(audioCtx.destination);
+
+try {
   source.start(0);
+} catch (e) {
+  console.log("unlock error", e);
+}
 }
 
 /* =========================
@@ -116,10 +121,10 @@ function start() {
   isPlaying = true;
   playBtn.textContent = "■";
 
-  // まず1回即再生
+  // ✅ まず1回鳴らす
   playSound();
 
-  // その後ループ
+  // ✅ その後ループ
   timer = setInterval(() => {
     playSound();
   }, 60000 / bpm);
@@ -159,7 +164,6 @@ function restartMetronome() {
 function playSound() {
   if (isDragging) return;
   if (!audioCtx) return;
-
   if (audioCtx.state === "suspended") {
     audioCtx.resume();
   }
