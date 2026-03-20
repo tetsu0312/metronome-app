@@ -111,16 +111,27 @@ minusBtn.addEventListener("click", () => {
 playBtn.addEventListener("click", () => {
   initAudio();
 
-  if (!isPlaying) {
-    playSound(); // ← 念のためここでもOK🔥
-  }
+  // iOS対策：無音でもいいから1回鳴らす🔥
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
 
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  gain.gain.setValueAtTime(0.0001, audioCtx.currentTime); // ほぼ無音
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.01);
+
+  // 通常処理
   if (isPlaying) {
     stop();
   } else {
     start();
   }
 });
+
+document.body.addEventListener("touchstart", initAudio, { once: true });
 
 /* =========================
    再生制御
@@ -148,7 +159,7 @@ function playSound() {
   if (!audioCtx) return;
 
   console.log("playSound", audioCtx?.state);
-  
+
   if (audioCtx.state === "suspended") {
     audioCtx.resume();
   }
