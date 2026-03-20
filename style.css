@@ -19,6 +19,8 @@ body {
 
   padding: 40px 32px 50px;
 
+  margin: 0 12px;
+
   box-shadow: 0 20px 40px rgba(0, 150, 200, 0.15);
 }
 
@@ -142,7 +144,7 @@ transform: translateY(-50%) scale(1.05);
 /* スライダー */
 input[type="range"] {
   flex: 1;
-  height: 6px;
+  height: 10px;
   border-radius: 3px;
   background: var(--slider-color, #cceeff);
 }
@@ -150,8 +152,8 @@ input[type="range"] {
 /* つまみ */
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--thumb-color, #7fd8ff);
   cursor: pointer;
