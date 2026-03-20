@@ -26,15 +26,14 @@ soundButtons.forEach(btn => {
 // AudioContext
 let audioCtx = null;
 
-function initAudio() {
+async function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   }
 
-  // 強制再開（Promise無視でOK）
-  audioCtx.resume().then(() => {
-    console.log("Audio resumed:", audioCtx.state);
-  });
+    if (audioCtx.state === "suspended") {
+    await audioCtx.resume(); // ← ここだけawait使う
+  }
 }
 
 /* =========================
@@ -150,22 +149,21 @@ minusBtn.addEventListener("click", () => {
 });
 
 // 再生ボタン
-playBtn.addEventListener("click", () => {
-  initAudio();
+playBtn.addEventListener("click", async () => {
+  await initAudio();
 
-  // iOS対策：無音でもいいから1回鳴らす🔥
+  // 無音で解放
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
 
   osc.connect(gain);
   gain.connect(audioCtx.destination);
 
-  gain.gain.setValueAtTime(0.0001, audioCtx.currentTime); // ほぼ無音
+  gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
 
   osc.start();
   osc.stop(audioCtx.currentTime + 0.01);
 
-  // 通常処理
   if (isPlaying) {
     stop();
   } else {
@@ -173,7 +171,9 @@ playBtn.addEventListener("click", () => {
   }
 });
 
-document.body.addEventListener("touchstart", initAudio, { once: true });
+document.body.addEventListener("touchstart", async () => {
+  await initAudio();
+}, { once: true });
 
 /* =========================
    再生制御
