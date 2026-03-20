@@ -1,7 +1,7 @@
 let bpm = 100;
 let isPlaying = false;
 let timer = null;
-let soundType = "click"; // 初期値
+let soundType = "click";
 let isDragging = false;
 
 // 要素取得
@@ -10,36 +10,38 @@ const slider = document.getElementById("slider");
 const playBtn = document.getElementById("playBtn");
 const plusBtn = document.querySelector(".plus");
 const minusBtn = document.querySelector(".minus");
-
 const soundButtons = document.querySelectorAll(".sound");
-
-soundButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    soundType = btn.dataset.sound;
-
-    // active切り替え
-    soundButtons.forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-  });
-});
 
 // AudioContext
 let audioCtx = null;
 
+/* =========================
+   Audio 初期化（iOS対策）
+========================= */
 async function initAudio() {
   if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)({
+      latencyHint: "interactive",
+    });
   }
 
-    if (audioCtx.state === "suspended") {
-    await audioCtx.resume(); // ← ここだけawait使う
+  if (audioCtx.state === "suspended") {
+    await audioCtx.resume();
   }
+
+  // iOS向け：無音バッファを1回流して音声出力を解放
+  const buffer = audioCtx.createBuffer(1, 1, 22050);
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
+  source.start(0);
 }
 
 /* =========================
    色（BPMに応じて変化）
+   60: 緑 / 100: 水色 / 140: 黄色 / 200: 赤
 ========================= */
-function getColorByBpm(bpm) {
+function getColorByBpm(currentBpm) {
   const min = 60;
   const mid1 = 100;
   const mid2 = 140;
@@ -47,35 +49,29 @@ function getColorByBpm(bpm) {
 
   let hue;
 
-  if (bpm <= mid1) {
+  if (currentBpm <= mid1) {
     // 緑 → 水色（60〜100）
-    const t = (bpm - min) / (mid1 - min);
+    const t = (currentBpm - min) / (mid1 - min);
     hue = 130 + (70 * t); // 130(緑) → 200(水色)
-
-  } else if (bpm <= mid2) {
+  } else if (currentBpm <= mid2) {
     // 水色 → 黄色（100〜140）
-    const t = (bpm - mid1) / (mid2 - mid1);
+    const t = (currentBpm - mid1) / (mid2 - mid1);
     hue = 200 - (140 * t); // 200(水色) → 60(黄色)
-
   } else {
     // 黄色 → 赤（140〜200）
-    const t = (bpm - mid2) / (max - mid2);
+    const t = (currentBpm - mid2) / (max - mid2);
     hue = 60 - (60 * t); // 60(黄色) → 0(赤)
   }
 
-  // デザイン調整✨
-  let saturation = 75; // 彩度（低めで柔らかく）
-  let lightness = 50; // 明るさ（高めでパステル）
+  let saturation = 75;
+  let lightness = 50;
 
-
-  // 高速は危険感🔥
-  if (bpm > 170) {
+  if (currentBpm > 170) {
     saturation = 85;
     lightness = 50;
   }
 
-  // 低速はやさしく🌿
-  if (bpm < 80) {
+  if (currentBpm < 80) {
     saturation = 65;
     lightness = 65;
   }
@@ -105,38 +101,165 @@ function updateBpm(val) {
 
   applyColor();
 
+  // 再生中かつドラッグ中でなければ、新しいBPMで再起動
   if (isPlaying && !isDragging) {
-    stop();
-    start();
+    restartMetronome();
   }
+}
+
+/* =========================
+   再生制御
+========================= */
+function start() {
+  if (isPlaying) return;
+
+  isPlaying = true;
+  playBtn.textContent = "■";
+
+  // まず1回即再生
+  playSound();
+
+  // その後ループ
+  timer = setInterval(() => {
+    playSound();
+  }, 60000 / bpm);
+}
+
+function stop() {
+  isPlaying = false;
+  playBtn.textContent = "▶";
+
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+}
+
+function restartMetronome() {
+  if (!isPlaying) return;
+
+  if (timer) {
+    clearInterval(timer);
+    timer = null;
+  }
+
+  // 触ってない時だけ即再開
+  if (!isDragging) {
+    playSound();
+  }
+
+  timer = setInterval(() => {
+    playSound();
+  }, 60000 / bpm);
+}
+
+/* =========================
+   音 + 鼓動
+========================= */
+function playSound() {
+  if (isDragging) return;
+  if (!audioCtx) return;
+
+  if (audioCtx.state === "suspended") {
+    audioCtx.resume();
+  }
+
+  // 鼓動アニメーション
+  playBtn.classList.add("beat");
+  setTimeout(() => {
+    playBtn.classList.remove("beat");
+  }, 100);
+
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+
+  // サウンド切替
+  switch (soundType) {
+    case "beep":
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+      break;
+
+    case "wood":
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      break;
+
+    case "digital":
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+      break;
+
+    case "mix":
+      osc.type = "square";
+      osc.frequency.setValueAtTime(900, audioCtx.currentTime);
+      break;
+
+    case "click":
+    default:
+      osc.type = "square";
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      break;
+  }
+
+  gain.gain.setValueAtTime(1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(
+    0.001,
+    audioCtx.currentTime + 0.12
+  );
+
+  osc.start(audioCtx.currentTime);
+  osc.stop(audioCtx.currentTime + 0.12);
 }
 
 /* =========================
    イベント
 ========================= */
 
-// スライダー触り始め
+// サウンド切替
+soundButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    soundType = btn.dataset.sound;
+
+    soundButtons.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+// スライダー：触り始め
 slider.addEventListener("mousedown", () => {
   isDragging = true;
 });
 
 slider.addEventListener("touchstart", () => {
   isDragging = true;
-});
+}, { passive: true });
 
+// スライダー：動かしている最中
 slider.addEventListener("input", (e) => {
   isDragging = true;
-  updateBpm(parseInt(e.target.value));
+  updateBpm(parseInt(e.target.value, 10));
 });
 
-// マウス離す（PC）
+// スライダー：離した時（PC）
 slider.addEventListener("change", () => {
   isDragging = false;
+
+  if (isPlaying) {
+    restartMetronome();
+  }
 });
 
-// スマホ対応（重要🔥）
+// スライダー：離した時（iOS）
 slider.addEventListener("touchend", () => {
   isDragging = false;
+
+  if (isPlaying) {
+    restartMetronome();
+  }
 });
 
 // ＋ −
@@ -152,18 +275,6 @@ minusBtn.addEventListener("click", () => {
 playBtn.addEventListener("click", async () => {
   await initAudio();
 
-  // 無音で解放
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  gain.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-
-  osc.start();
-  osc.stop(audioCtx.currentTime + 0.01);
-
   if (isPlaying) {
     stop();
   } else {
@@ -171,78 +282,14 @@ playBtn.addEventListener("click", async () => {
   }
 });
 
-document.body.addEventListener("touchstart", async () => {
-  await initAudio();
-}, { once: true });
-
-/* =========================
-   再生制御
-========================= */
-function start() {
-  isPlaying = true;
-  playBtn.textContent = "■";
-
-  playSound(); 
-
-  timer = setInterval(playSound, 60000 / bpm);
-}
-
-function stop() {
-  isPlaying = false;
-  playBtn.textContent = "▶";
-  clearInterval(timer);
-}
-
-/* =========================
-   音 + 鼓動
-========================= */
-
-function playSound() {
-  if (isDragging) return;
-  if (!audioCtx) return;
-
-  console.log("playSound", audioCtx?.state);
-
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
-
-  // 鼓動
-  playBtn.classList.add("beat");
-  setTimeout(() => {
-    playBtn.classList.remove("beat");
-  }, 100);
-
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  // ===== サウンド分岐 =====
-  if (soundType === "beep") {
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
-
-  } else if (soundType === "wood") {
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-
-  } else {
-    osc.type = "square";
-    osc.frequency.setValueAtTime(800, audioCtx.currentTime);
-  }
-
-  // ===== 音量しっかり出す🔥 =====
-  gain.gain.setValueAtTime(1, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(
-    0.001,
-    audioCtx.currentTime + 0.12 // ← 少し長く
-  );
-
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + 0.12);
-}
+// iOS向け：最初のタッチでAudio解放
+document.body.addEventListener(
+  "touchstart",
+  async () => {
+    await initAudio();
+  },
+  { once: true, passive: true }
+);
 
 /* =========================
    初期化
