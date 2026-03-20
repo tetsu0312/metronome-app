@@ -1,28 +1,27 @@
-let bpm = 100;
-let isPlaying = false;
-let timer = null;
-let soundType = 0;
-
-// Web Audio API（再利用）
-let audioCtx = null;
-
-function initAudio() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
+function getColorByBpm(bpm) {
+  if (bpm < 80) return "#7fd8ff";      // ゆっくり
+  if (bpm < 120) return "#5ec8ff";     // 普通
+  if (bpm < 160) return "#3aaed8";     // 速い
+  return "#007ea7";                    // めっちゃ速い
 }
 
-const bpmEl = document.getElementById("bpm");
-const slider = document.getElementById("slider");
-const playBtn = document.getElementById("playBtn");
+function applyColor() {
+  const color = getColorByBpm(bpm);
 
-const sounds = document.querySelectorAll(".sound");
+  playBtn.style.background = color;
 
-// BPM更新
+  document.querySelector("input[type='range']::-webkit-slider-thumb");
+
+  slider.style.setProperty("--thumb-color", color);
+}
+
+// BPM更新時に呼ぶ
 function updateBpm(val) {
   bpm = Math.min(200, Math.max(60, val));
   bpmEl.textContent = bpm;
   slider.value = bpm;
+
+  applyColor();
 
   if (isPlaying) {
     stop();
@@ -30,38 +29,15 @@ function updateBpm(val) {
   }
 }
 
-// ＋ −
-document.getElementById("plus").onclick = () => updateBpm(bpm + 1);
-document.getElementById("minus").onclick = () => updateBpm(bpm - 1);
-
-// スライダー
-slider.addEventListener("input", e => {
-  updateBpm(parseInt(e.target.value));
-});
-
-// 再生
-playBtn.onclick = () => {
-  initAudio(); // ← ユーザー操作で初期化（超重要）
-
-  isPlaying ? stop() : start();
-};
-
-function start() {
-  isPlaying = true;
-  playBtn.textContent = "■";
-
-  timer = setInterval(playSound, 60000 / bpm);
-}
-
-function stop() {
-  isPlaying = false;
-  playBtn.textContent = "▶";
-  clearInterval(timer);
-}
-
-// 音（改善版）
+// 拍アニメーション
 function playSound() {
   if (!audioCtx) return;
+
+  // ボタン鼓動
+  playBtn.classList.add("beat");
+  setTimeout(() => {
+    playBtn.classList.remove("beat");
+  }, 100);
 
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
@@ -69,30 +45,11 @@ function playSound() {
   osc.connect(gain);
   gain.connect(audioCtx.destination);
 
-  const freqs = [
-    1000,
-    600,
-    300,
-    1200,
-    Math.random() * 1000 + 300
-  ];
+  osc.frequency.value = 800;
 
-  osc.frequency.value = freqs[soundType];
-
-  // クリックっぽくする
   gain.gain.setValueAtTime(1, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.08);
 
-  osc.start(audioCtx.currentTime);
+  osc.start();
   osc.stop(audioCtx.currentTime + 0.08);
 }
-
-// サウンド切替
-sounds.forEach((btn, index) => {
-  btn.onclick = () => {
-    soundType = index;
-
-    sounds.forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-  };
-});
