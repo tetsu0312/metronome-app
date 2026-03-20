@@ -2,6 +2,7 @@ let bpm = 100;
 let isPlaying = false;
 let timer = null;
 let soundType = "click"; // 初期値
+let isDragging = false;
 
 // 要素取得
 const bpmEl = document.getElementById("bpm");
@@ -41,22 +42,44 @@ function initAudio() {
 ========================= */
 function getColorByBpm(bpm) {
   const min = 60;
+  const mid1 = 100;
+  const mid2 = 140;
   const max = 200;
-
-  const ratio = (bpm - min) / (max - min);
 
   let hue;
 
-  if (ratio < 0.5) {
-    const t = ratio / 0.5;
-    hue = 140 + (60 * t); // 緑 → 青
+  if (bpm <= mid1) {
+    // 緑 → 水色（60〜100）
+    const t = (bpm - min) / (mid1 - min);
+    hue = 130 + (70 * t); // 130(緑) → 200(水色)
+
+  } else if (bpm <= mid2) {
+    // 水色 → 黄色（100〜140）
+    const t = (bpm - mid1) / (mid2 - mid1);
+    hue = 200 - (140 * t); // 200(水色) → 60(黄色)
+
   } else {
-    const t = (ratio - 0.5) / 0.5;
-    hue = 200 + (120 * t); // 青 → ピンク
+    // 黄色 → 赤（140〜200）
+    const t = (bpm - mid2) / (max - mid2);
+    hue = 60 - (60 * t); // 60(黄色) → 0(赤)
   }
 
-  const saturation = 70;
-  const lightness = 55;
+  // デザイン調整✨
+  let saturation = 75; // 彩度（低めで柔らかく）
+  let lightness = 50; // 明るさ（高めでパステル）
+
+
+  // 高速は危険感🔥
+  if (bpm > 170) {
+    saturation = 85;
+    lightness = 50;
+  }
+
+  // 低速はやさしく🌿
+  if (bpm < 80) {
+    saturation = 65;
+    lightness = 65;
+  }
 
   return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
 }
@@ -83,7 +106,7 @@ function updateBpm(val) {
 
   applyColor();
 
-  if (isPlaying) {
+  if (isPlaying && !isDragging) {
     stop();
     start();
   }
@@ -93,9 +116,28 @@ function updateBpm(val) {
    イベント
 ========================= */
 
-// スライダー
+// スライダー触り始め
+slider.addEventListener("mousedown", () => {
+  isDragging = true;
+});
+
+slider.addEventListener("touchstart", () => {
+  isDragging = true;
+});
+
 slider.addEventListener("input", (e) => {
+  isDragging = true;
   updateBpm(parseInt(e.target.value));
+});
+
+// マウス離す（PC）
+slider.addEventListener("change", () => {
+  isDragging = false;
+});
+
+// スマホ対応（重要🔥）
+slider.addEventListener("touchend", () => {
+  isDragging = false;
 });
 
 // ＋ −
@@ -156,6 +198,7 @@ function stop() {
 ========================= */
 
 function playSound() {
+  if (isDragging) return;
   if (!audioCtx) return;
 
   console.log("playSound", audioCtx?.state);
