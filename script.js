@@ -1,6 +1,5 @@
 let bpm = 100;
 let isPlaying = false;
-let timer = null;
 let soundType = "click";
 let isDragging = false;
 
@@ -15,8 +14,17 @@ const soundButtons = document.querySelectorAll(".sound");
 // AudioContext
 let audioCtx = null;
 
+// 未来スケジューリング用
+let nextNoteTime = 0;
+let schedulerWorker = null;
+let fallbackTimer = null;
+const lookahead = 25; // msごとにスケジューラ確認
+const scheduleAheadTime = 0.2; // 200ms先まで予約
+const noteLength = 0.12; // クリック音の長さ
+let visualTimeouts = [];
+
 /* =========================
-   Audio 初期化（iOS対策）
+   Audio 初期化（iOS / 背景再生対策）
 ========================= */
 async function initAudio() {
   if (!audioCtx) {
@@ -25,21 +33,30 @@ async function initAudio() {
     });
   }
 
+  // 対応ブラウザなら再生用途を明示
+  try {
+    if (navigator.audioSession && "type" in navigator.audioSession) {
+      navigator.audioSession.type = "playback";
+    }
+  } catch (e) {
+    console.log("audioSession not available", e);
+  }
+
   if (audioCtx.state === "suspended") {
     await audioCtx.resume();
   }
 
-  // iOS向け：無音バッファを1回流して音声出力を解放
-const buffer = audioCtx.createBuffer(1, 1, 22050);
-const source = audioCtx.createBufferSource();
-source.buffer = buffer;
-source.connect(audioCtx.destination);
+  // iOS向け：無音バッファを1回流してアンロック
+  const buffer = audioCtx.createBuffer(1, 1, 22050);
+  const source = audioCtx.createBufferSource();
+  source.buffer = buffer;
+  source.connect(audioCtx.destination);
 
-try {
-  source.start(0);
-} catch (e) {
-  console.log("unlock error", e);
-}
+  try {
+    source.start(0);
+  } catch (e) {
+    console.log("unlock error", e);
+  }
 }
 
 /* =========================
@@ -48,36 +65,25 @@ try {
 ========================= */
 function getColorByBpm(currentBpm) {
   const min = 60;
-  const mid1 = 100;
-  const mid2 = 140;
   const max = 200;
 
-  let hue;
+  // 0〜1に正規化
+  const t = (currentBpm - min) / (max - min);
 
-  if (currentBpm <= mid1) {
-    // 緑 → 水色（60〜100）
-    const t = (currentBpm - min) / (mid1 - min);
-    hue = 130 + (70 * t); // 130(緑) → 200(水色)
-  } else if (currentBpm <= mid2) {
-    // 水色 → 黄色（100〜140）
-    const t = (currentBpm - mid1) / (mid2 - mid1);
-    hue = 200 - (140 * t); // 200(水色) → 60(黄色)
-  } else {
-    // 黄色 → 赤（140〜200）
-    const t = (currentBpm - mid2) / (max - mid2);
-    hue = 60 - (60 * t); // 60(黄色) → 0(赤)
-  }
+  // Hueを130→360→0へ回す
+  let hue = 130 + t * 230; // 130 → 360
+
+  if (hue > 360) hue -= 360; // 360超えたらループ
 
   let saturation = 75;
   let lightness = 50;
 
+  // 微調整（今の良いやつ残す）
   if (currentBpm > 170) {
     saturation = 85;
-    lightness = 50;
   }
 
   if (currentBpm < 80) {
-    saturation = 65;
     lightness = 65;
   }
 
@@ -106,73 +112,161 @@ function updateBpm(val) {
 
   applyColor();
 
-  // 再生中かつドラッグ中でなければ、新しいBPMで再起動
+  // 再生中でドラッグ中でなければ、次拍から新テンポに寄せる
   if (isPlaying && !isDragging) {
     restartMetronome();
   }
 }
 
 /* =========================
+   Web Worker スケジューラ
+   背景タブでも鳴りやすくするため
+========================= */
+function createSchedulerWorker() {
+  const workerCode = `
+    let timerId = null;
+    let interval = 25;
+
+    self.onmessage = function(e) {
+      const data = e.data;
+
+      if (data === "start") {
+        if (timerId) clearInterval(timerId);
+        timerId = setInterval(() => {
+          self.postMessage("tick");
+        }, interval);
+      }
+
+      if (data === "stop") {
+        if (timerId) {
+          clearInterval(timerId);
+          timerId = null;
+        }
+      }
+
+      if (data && data.type === "setInterval") {
+        interval = data.interval;
+        if (timerId) {
+          clearInterval(timerId);
+          timerId = setInterval(() => {
+            self.postMessage("tick");
+          }, interval);
+        }
+      }
+    };
+  `;
+
+  const blob = new Blob([workerCode], { type: "application/javascript" });
+  return new Worker(URL.createObjectURL(blob));
+}
+
+function startSchedulerLoop() {
+  stopSchedulerLoop();
+
+  if (window.Worker) {
+    schedulerWorker = createSchedulerWorker();
+    schedulerWorker.onmessage = (e) => {
+      if (e.data === "tick") {
+        scheduler();
+      }
+    };
+    schedulerWorker.postMessage({ type: "setInterval", interval: lookahead });
+    schedulerWorker.postMessage("start");
+  } else {
+    fallbackTimer = setInterval(scheduler, lookahead);
+  }
+}
+
+function stopSchedulerLoop() {
+  if (schedulerWorker) {
+    schedulerWorker.postMessage("stop");
+    schedulerWorker.terminate();
+    schedulerWorker = null;
+  }
+
+  if (fallbackTimer) {
+    clearInterval(fallbackTimer);
+    fallbackTimer = null;
+  }
+}
+
+/* =========================
    再生制御
 ========================= */
-function start() {
+async function start() {
   if (isPlaying) return;
+
+  await initAudio();
+
+  if (!audioCtx) return;
+  if (audioCtx.state === "suspended") {
+    await audioCtx.resume();
+  }
 
   isPlaying = true;
   playBtn.textContent = "■";
 
-  // ✅ まず1回鳴らす
-  playSound();
+  // 少し先からスタートさせると安定しやすい
+  nextNoteTime = audioCtx.currentTime + 0.05;
 
-  // ✅ その後ループ
-  timer = setInterval(() => {
-    playSound();
-  }, 60000 / bpm);
+  startSchedulerLoop();
 }
 
 function stop() {
   isPlaying = false;
   playBtn.textContent = "▶";
 
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
+  stopSchedulerLoop();
+  clearVisualTimeouts();
 }
 
 function restartMetronome() {
-  if (!isPlaying) return;
+  if (!isPlaying || !audioCtx) return;
 
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
-  }
-
-  // 触ってない時だけ即再開
-  if (!isDragging) {
-    playSound();
-  }
-
-  timer = setInterval(() => {
-    playSound();
-  }, 60000 / bpm);
+  // すでに予約済みの音はキャンセルできないので、
+  // 少し先から新テンポで再同期する
+  nextNoteTime = audioCtx.currentTime + 0.05;
 }
 
 /* =========================
-   音 + 鼓動
+   次の拍を計算
 ========================= */
-function playSound() {
-  if (isDragging) return;
-  if (!audioCtx) return;
+function nextNote() {
+  const secondsPerBeat = 60 / bpm;
+  nextNoteTime += secondsPerBeat;
+}
+
+/* =========================
+   スケジューラ本体
+========================= */
+function scheduler() {
+  if (!isPlaying || !audioCtx) return;
+
+  // suspendされたら復帰を試みる
   if (audioCtx.state === "suspended") {
-    audioCtx.resume();
+    audioCtx.resume().catch(() => {});
+    return;
   }
 
-  // 鼓動アニメーション
-  playBtn.classList.add("beat");
-  setTimeout(() => {
-    playBtn.classList.remove("beat");
-  }, 100);
+  while (nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+    scheduleBeat(nextNoteTime);
+    nextNote();
+  }
+}
+
+/* =========================
+   1拍分を予約
+========================= */
+function scheduleBeat(time) {
+  scheduleSound(time);
+  scheduleVisualBeat(time);
+}
+
+/* =========================
+   音予約
+========================= */
+function scheduleSound(time) {
+  if (!audioCtx) return;
 
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
@@ -180,43 +274,69 @@ function playSound() {
   osc.connect(gain);
   gain.connect(audioCtx.destination);
 
-  // サウンド切替
   switch (soundType) {
     case "beep":
       osc.type = "sine";
-      osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(1000, time);
       break;
 
     case "wood":
       osc.type = "triangle";
-      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(600, time);
       break;
 
     case "digital":
       osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(1200, time);
       break;
 
     case "mix":
       osc.type = "square";
-      osc.frequency.setValueAtTime(900, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(900, time);
       break;
 
     case "click":
     default:
       osc.type = "square";
-      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      osc.frequency.setValueAtTime(800, time);
       break;
   }
 
-  gain.gain.setValueAtTime(1, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(
-    0.001,
-    audioCtx.currentTime + 0.12
-  );
+  gain.gain.cancelScheduledValues(time);
+gain.gain.setValueAtTime(0.5, time);
+gain.gain.linearRampToValueAtTime(0, time + noteLength);
 
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + 0.12);
+  osc.start(time);
+  osc.stop(time + noteLength);
+}
+
+/* =========================
+   UI鼓動アニメーション予約
+========================= */
+function scheduleVisualBeat(time) {
+  if (!audioCtx) return;
+
+  const delayMs = Math.max(0, (time - audioCtx.currentTime) * 1000);
+
+  const addId = setTimeout(() => {
+    playBtn.classList.add("beat");
+
+    const removeId = setTimeout(() => {
+      playBtn.classList.remove("beat");
+      visualTimeouts = visualTimeouts.filter((id) => id !== removeId);
+    }, 100);
+
+    visualTimeouts.push(removeId);
+    visualTimeouts = visualTimeouts.filter((id) => id !== addId);
+  }, delayMs);
+
+  visualTimeouts.push(addId);
+}
+
+function clearVisualTimeouts() {
+  visualTimeouts.forEach((id) => clearTimeout(id));
+  visualTimeouts = [];
+  playBtn.classList.remove("beat");
 }
 
 /* =========================
@@ -225,11 +345,14 @@ function playSound() {
 
 // サウンド切替
 soundButtons.forEach((btn) => {
-  btn.addEventListener("click", () => {
+  btn.addEventListener("click", async () => {
     soundType = btn.dataset.sound;
 
     soundButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
+
+    // 音切替直後でもAudioContext起きてる状態を保ちやすくする
+    await initAudio();
   });
 });
 
@@ -238,9 +361,13 @@ slider.addEventListener("mousedown", () => {
   isDragging = true;
 });
 
-slider.addEventListener("touchstart", () => {
-  isDragging = true;
-}, { passive: true });
+slider.addEventListener(
+  "touchstart",
+  () => {
+    isDragging = true;
+  },
+  { passive: true }
+);
 
 // スライダー：動かしている最中
 slider.addEventListener("input", (e) => {
@@ -277,18 +404,14 @@ minusBtn.addEventListener("click", () => {
 
 // 再生ボタン
 playBtn.addEventListener("click", async () => {
-  await initAudio();
-
-  playSound();
-
   if (isPlaying) {
     stop();
   } else {
-    start();
+    await start();
   }
 });
 
-// iOS向け：最初のタッチでAudio解放
+// 初回タッチでAudio解放
 document.body.addEventListener(
   "touchstart",
   async () => {
@@ -296,6 +419,51 @@ document.body.addEventListener(
   },
   { once: true, passive: true }
 );
+
+// 初回クリックでもAudio解放
+document.body.addEventListener(
+  "click",
+  async () => {
+    await initAudio();
+  },
+  { once: true, passive: true }
+);
+
+/* =========================
+   バックグラウンド対策
+========================= */
+
+// タブ復帰時にAudioContextが止まってたら復帰を試みる
+document.addEventListener("visibilitychange", async () => {
+  if (!audioCtx) return;
+
+  if (!document.hidden && audioCtx.state === "suspended") {
+    try {
+      await audioCtx.resume();
+      if (isPlaying) {
+        restartMetronome();
+      }
+    } catch (e) {
+      console.log("resume on visibilitychange failed", e);
+    }
+  }
+});
+
+// ページフォーカス時も復帰を試みる
+window.addEventListener("focus", async () => {
+  if (!audioCtx) return;
+
+  if (audioCtx.state === "suspended") {
+    try {
+      await audioCtx.resume();
+      if (isPlaying) {
+        restartMetronome();
+      }
+    } catch (e) {
+      console.log("resume on focus failed", e);
+    }
+  }
+});
 
 /* =========================
    初期化
