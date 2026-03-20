@@ -10,16 +10,17 @@
 
 <div class="card">
   <div class="header">
-    <h1>メトロノーム🎵</h1>
+    <h1>メトロノーム</h1>
   </div>
 
-  <div class="main">
-    <div class="bpm-area">
-      <span id="bpm">100</span>
-      <span class="unit">BPM</span>
-    </div>
+<div class="bpm-row">
+  <div class="bpm-area">
+    <span id="bpm">100</span>
+    <span class="unit">BPM</span>
+  </div>
 
-    <button class="play-btn" id="playBtn">▶</button>
+  <button class="play-btn" id="playBtn">▶</button>
+</div>
 
     <div class="control">
       <div class="minus" id="minus">−</div>
@@ -34,11 +35,11 @@
 <div class="sound-panel">
   <p>サウンド</p>
   <div class="sound-buttons">
-    <button class="sound active">クリック</button>
-    <button class="sound">ビープ</button>
-    <button class="sound">ウッド</button>
-    <button class="sound">デジタル</button>
-    <button class="sound">ミックス</button>
+<button class="sound active" data-sound="click">クリック</button>
+<button class="sound" data-sound="beep">ビープ</button>
+<button class="sound" data-sound="wood">ウッド</button>
+<button class="sound" data-sound="digital">デジタル</button>
+<button class="sound" data-sound="mix">ミックス</button>
   </div>
 </div>
 
