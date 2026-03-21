@@ -7,12 +7,12 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  padding: 24px;
+  padding: 20px;
 }
 
 /* カード */
 .card {
-  width: calc(100% - 24px);
+  width: calc(100% - 20px);
   max-width: 540px;
   background: white;
   border-radius: 20px;
@@ -163,10 +163,10 @@ input[type="range"]::-webkit-slider-thumb {
 /* サウンド */
 .sound-panel {
   max-width: 540px;
-  width: calc(100% - 24px);
+  width: calc(100% - 20px);
   margin-top: 24px;
   background: #f0fbff;
-  padding: 24px;
+  padding: 20px;
   border-radius: 16px;
 }
 
