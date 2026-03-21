@@ -286,15 +286,17 @@ function scheduleSound(time) {
       osc.stop(time + 0.15);
       break;
 
-    case "ティック":
-      // シャープで短い音
-      osc.type = "square";
-      osc.frequency.setValueAtTime(1200, time);
-      gain.gain.setValueAtTime(0.6, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-      osc.start(time);
-      osc.stop(time + 0.05);
-      break;
+case "ティック":
+  // 柔らかいティック
+  osc.type = "triangle"; // ←丸くする
+  osc.frequency.setValueAtTime(900, time); // 少し低め
+
+  gain.gain.setValueAtTime(0.4, time);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08); // 少し長め
+
+  osc.start(time);
+  osc.stop(time + 0.08);
+  break;
 
     case "ウッド":
       // 木っぽい自然な音
@@ -307,16 +309,18 @@ function scheduleSound(time) {
       break;
 
 
-    case "クリック":
-    default:
-      // 高級感あるはっきりしたクリック
-      osc.type = "square";
-      osc.frequency.setValueAtTime(1500, time);
-      gain.gain.setValueAtTime(0.7, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
-      osc.start(time);
-      osc.stop(time + 0.08);
-      break;
+case "クリック":
+default:
+  // 柔らかいクリック（高級感）
+  osc.type = "sine"; // ←完全に丸い音
+  osc.frequency.setValueAtTime(1100, time); // 少しだけ高め
+
+  gain.gain.setValueAtTime(0.5, time);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.1); // なめらか
+
+  osc.start(time);
+  osc.stop(time + 0.1);
+  break;
   }
 }
 
