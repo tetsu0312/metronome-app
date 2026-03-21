@@ -20,7 +20,6 @@ let schedulerWorker = null;
 let fallbackTimer = null;
 const lookahead = 25; // msごとにスケジューラ確認
 const scheduleAheadTime = 0.2; // 200ms先まで予約
-const noteLength = 0.12; // クリック音の長さ
 let visualTimeouts = [];
 
 /* =========================
