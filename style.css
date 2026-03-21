@@ -70,7 +70,7 @@ body {
 
 /* BPMの文字 */
 .unit {
-  font-size: 22px;     /* ← 小さくする */
+  font-size: 20px;     /* ← 小さくする */
   color: #666;
 }
 
