@@ -70,7 +70,7 @@ body {
 
 /* BPMの文字 */
 .unit {
-  font-size: 24px;     /* ← 小さくする */
+  font-size: 22px;     /* ← 小さくする */
   color: #666;
 }
 
@@ -80,8 +80,8 @@ body {
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 72px;
-  height: 72px;
+  width: 68px;
+  height: 68px;
   border-radius: 50%;
   border: none;
   background: #7fd8ff;
