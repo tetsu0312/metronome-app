@@ -1,6 +1,6 @@
-let bpm = 100;
+let bpm = 120;
 let isPlaying = false;
-let soundType = "ソフト";
+let soundType = "ウッド";
 let isDragging = false;
 let beatsPerBar = 4; // ← デフォルト4拍子
 let currentBeat = 0; // ← 今何拍目か
@@ -727,6 +727,15 @@ window.addEventListener("focus", async () => {
    初期化
 ========================= */
 updateBpm(bpm);
+
+// デフォルトサウンドのUI反映
+soundButtons.forEach((btn) => {
+  if (btn.dataset.sound === "ウッド") {
+    btn.classList.add("active");
+  } else {
+    btn.classList.remove("active");
+  }
+});
 
 // 拍表示の初期値
 document.getElementById("beatDisplay").textContent = 1;
