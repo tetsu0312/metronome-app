@@ -12,14 +12,14 @@ body {
 
 /* カード */
 .card {
-  width: 100%;
+  width: calc(100% - 20px);
   max-width: 500px;
   background: white;
   border-radius: 20px;
 
   padding: 40px 26px 50px;
 
-  margin: 0 12px;
+  margin: 0 auto;
 
   box-shadow: 0 20px 40px rgba(0, 150, 200, 0.15);
 }
