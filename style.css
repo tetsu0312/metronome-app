@@ -1,3 +1,5 @@
+/* body */
+
 body {
   margin: 0;
   font-family: "Hiragino Maru Gothic ProN", "Rounded Mplus 1c", sans-serif;
@@ -10,12 +12,15 @@ body {
   padding: 20px;
 }
 
+/* bodyスマホ */
 @media (max-width: 768px) {
   body {
     justify-content: flex-start;
     padding: 15px 20px; 
   }
 }
+
+
 
 /* カード */
 .card {
@@ -30,6 +35,15 @@ body {
 
   box-shadow: 0 20px 40px rgba(0, 150, 200, 0.15);
 }
+
+/* カードスマホ */
+@media (max-width: 768px) {
+  .card {
+    width: 100%;       /* ← フル幅にする */
+    max-width: none;   /* ← 制限解除 */
+  }
+}
+
 
 /* ヘッダー */
 .header {
