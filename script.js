@@ -4,6 +4,7 @@ let soundType = "ソフト";
 let isDragging = false;
 let beatsPerBar = 4; // ← デフォルト4拍子
 let currentBeat = 0; // ← 今何拍目か
+let isAdjusting = false;
 
 // 要素取得
 const bpmEl = document.getElementById("bpm");
@@ -131,7 +132,7 @@ function updateBpm(val) {
   applyColor();
 
   // 再生中でドラッグ中でなければ、次拍から新テンポに寄せる
-  if (isPlaying && !isDragging) {
+  if (isPlaying && !isDragging && !isAdjusting) {
     restartMetronome();
   }
 }
@@ -559,14 +560,75 @@ slider.addEventListener("touchend", () => {
   }
 });
 
-// ＋ −
+// =========================
+// ＋ボタン（押してる間は再同期しない）
+// =========================
+
+// 押した瞬間
+plusBtn.addEventListener("mousedown", () => {
+  isAdjusting = true;
+});
+
+// 離した瞬間
+plusBtn.addEventListener("mouseup", () => {
+  isAdjusting = false;
+
+  // 指離したタイミングで1回だけ再同期
+  if (isPlaying) {
+    restartMetronome();
+  }
+});
+
+// クリック（値変更）
 plusBtn.addEventListener("click", () => {
   updateBpm(bpm + 1);
 });
 
+
+// =========================
+// −ボタン（押してる間は再同期しない）
+// =========================
+
+// 押した瞬間
+minusBtn.addEventListener("mousedown", () => {
+  isAdjusting = true;
+});
+
+// 離した瞬間
+minusBtn.addEventListener("mouseup", () => {
+  isAdjusting = false;
+
+  if (isPlaying) {
+    restartMetronome();
+  }
+});
+
+// クリック（値変更）
 minusBtn.addEventListener("click", () => {
   updateBpm(bpm - 1);
 });
+
+
+// スマホ対応（タッチ）
+plusBtn.addEventListener("touchstart", () => {
+  isAdjusting = true;
+});
+
+plusBtn.addEventListener("touchend", () => {
+  isAdjusting = false;
+  if (isPlaying) restartMetronome();
+});
+
+minusBtn.addEventListener("touchstart", () => {
+  isAdjusting = true;
+});
+
+minusBtn.addEventListener("touchend", () => {
+  isAdjusting = false;
+  if (isPlaying) restartMetronome();
+});
+
+
 
 // 再生ボタン
 playBtn.addEventListener("click", async () => {
