@@ -160,6 +160,161 @@ input[type="range"]::-webkit-slider-thumb {
   box-shadow: 0 3px 8px rgba(0,0,0,0.2);
 }
 
+
+/* =========================
+   現在の拍表示
+========================= */
+.beat-display {
+  font-size: 28px;
+  font-weight: bold;
+  color: #333;
+
+  margin-top: 12px;
+  margin-bottom: 6px;
+
+  text-align: center;
+
+  transform: scale(1.1);
+  transition: transform 0.1s;
+}
+
+/* 拍に合わせてちょい強調 */
+.beat-display.active {
+  transform: scale(1.25);
+}
+
+
+
+/* =========================
+   拍ドット（●○○○）
+========================= */
+.beat-dots {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 8px 0 14px;
+}
+
+.beat-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+
+  background: #d0e7f2; /* 未選択 */
+  transition: all 0.15s;
+}
+
+/* 通常拍 */
+.beat-dot.active {
+  background: #7fd8ff;
+  transform: scale(1.2);
+
+  box-shadow:
+    0 0 6px rgba(127, 216, 255, 0.6);
+}
+
+/* 強拍（1拍目） */
+.beat-dot.accent {
+  background: #ffd84d; /* 電球イエロー */
+
+  transform: scale(1.4);
+
+  /* 発光✨ */
+  box-shadow:
+    0 0 6px rgba(255, 216, 77, 0.8),
+    0 0 12px rgba(255, 216, 77, 0.6),
+    0 0 20px rgba(255, 216, 77, 0.4);
+}
+
+
+
+/* =========================
+   拍セレクター全体
+========================= */
+.beat-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  margin-top: 20px;
+}
+
+/* 数字の並び */
+.beat-selector {
+  display: flex;
+  gap: 8px;
+}
+
+/* =========================
+   拍ボタン
+========================= */
+.beat-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%; /* ←丸！ */
+
+  border: none;
+  background: #e8f3f8; /* 未選択 */
+  color: #7aaec4;
+
+  font-weight: bold;
+  font-size: 16px;
+
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: all 0.2s;
+}
+
+/* 選択中 */
+.beat-btn.active {
+  background: #7fd8ff;
+  color: white;
+  box-shadow: 0 4px 10px rgba(0,150,200,0.3);
+  transform: scale(1.1);
+}
+
+/* 押した時 */
+.beat-btn:active {
+  transform: scale(0.9);
+}
+
+
+/* =========================
+   矢印ボタン
+========================= */
+.arrow {
+  background: none;
+  border: none;
+
+  font-size: 22px;
+  color: #7aaec4;
+
+  cursor: pointer;
+
+  padding: 8px;
+  transition: all 0.2s;
+
+  margin: 0 4px;
+}
+
+/* ホバーでちょい強調 */
+.arrow:hover {
+  color: #3aaed8;
+}
+
+/* 押したとき */
+.arrow:active {
+  transform: scale(0.85);
+}
+
+
+
+
 /* サウンド */
 .sound-panel {
   max-width: 540px;

@@ -8,37 +8,59 @@
 </head>
 <body>
 
+<!-- =========================
+   メトロノームカード
+========================= -->
 <div class="card">
   <div class="header">
     <h1>メトロノーム</h1>
   </div>
 
-<div class="bpm-row">
-  <div class="bpm-area">
-    <span id="bpm">100</span>
-    <span class="unit">BPM</span>
-  </div>
-
-  <button class="play-btn" id="playBtn">▶</button>
-</div>
-
-    <div class="control">
-      <div class="minus" id="minus">−</div>
-
-      <input type="range" id="slider" min="60" max="200" value="100">
-
-      <div class="plus" id="plus">＋</div>
+  <!-- =========================
+       BPM表示と再生ボタン
+  ========================= -->
+  <div class="bpm-row">
+    <div class="bpm-area">
+      <span id="bpm">100</span>
+      <span class="unit">BPM</span>
     </div>
+
+    <!-- 再生/停止ボタン -->
+    <button class="play-btn" id="playBtn">▶</button>
+  </div>
+
+  <div class="control">
+    <div class="minus" id="minus">−</div>
+    <input type="range" id="slider" min="60" max="200" value="100">
+    <div class="plus" id="plus">＋</div>
   </div>
 </div>
 
+<!-- =========================
+   拍子表示
+========================= -->
+<div id="beatDisplay" class="beat-display">1</div>
+<div class="beat-dots" id="beatDots"></div>
+
+<!-- =========================
+   拍子選択UI
+========================= -->
+<div class="beat-container">
+  <button class="arrow" id="leftArrow">‹</button>
+  <div class="beat-selector" id="beatSelector"></div>
+  <button class="arrow" id="rightArrow">›</button>
+</div>
+
+<!-- =========================
+   サウンド選択UI
+========================= -->
 <div class="sound-panel">
   <p>サウンド</p>
   <div class="sound-buttons">
-<button class="sound active" data-sound="ソフト">ソフト</button>
-<button class="sound" data-sound="ティック">ティック</button>
-<button class="sound" data-sound="ウッド">ウッド</button>
-<button class="sound" data-sound="クリック">クリック</button>
+    <button class="sound active" data-sound="ソフト">ソフト</button>
+    <button class="sound" data-sound="ティック">ティック</button>
+    <button class="sound" data-sound="ウッド">ウッド</button>
+    <button class="sound" data-sound="クリック">クリック</button>
   </div>
 </div>
 

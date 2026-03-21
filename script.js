@@ -2,6 +2,8 @@ let bpm = 100;
 let isPlaying = false;
 let soundType = "ソフト";
 let isDragging = false;
+let beatsPerBar = 4; // ← デフォルト4拍子
+let currentBeat = 0; // ← 今何拍目か
 
 // 要素取得
 const bpmEl = document.getElementById("bpm");
@@ -10,6 +12,23 @@ const playBtn = document.getElementById("playBtn");
 const plusBtn = document.querySelector(".plus");
 const minusBtn = document.querySelector(".minus");
 const soundButtons = document.querySelectorAll(".sound");
+const beatDisplay = document.getElementById("beatDisplay");
+
+/* =========================
+   UI：拍数選択
+========================= */
+// 表示開始位置（2〜6）
+let beatStart = 2; 
+
+// 表示数
+const beatCount = 5;
+
+// DOM
+const beatSelector = document.getElementById("beatSelector");
+const leftArrow = document.getElementById("leftArrow");
+const rightArrow = document.getElementById("rightArrow");
+
+
 
 // AudioContext
 let audioCtx = null;
@@ -257,14 +276,21 @@ function scheduler() {
    1拍分を予約
 ========================= */
 function scheduleBeat(time) {
-  scheduleSound(time);
-  scheduleVisualBeat(time);
+  const isAccent = currentBeat === 0;
+
+  scheduleSound(time, isAccent);
+  scheduleVisualBeat(time, currentBeat);
+
+  currentBeat++;
+  if (currentBeat >= beatsPerBar) {
+    currentBeat = 0;
+  }
 }
 
 /* =========================
    音予約
 ========================= */
-function scheduleSound(time) {
+function scheduleSound(time, isAccent) {
   if (!audioCtx) return;
 
   const osc = audioCtx.createOscillator();
@@ -275,65 +301,124 @@ function scheduleSound(time) {
 
   gain.gain.cancelScheduledValues(time);
 
-  switch (soundType) {
-    case "ソフト":
-      // やわらかい丸い音
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(700, time);
-      gain.gain.setValueAtTime(0.4, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
-      osc.start(time);
-      osc.stop(time + 0.15);
-      break;
+ switch (soundType) {
 
-case "ティック":
-  // 柔らかいティック
-  osc.type = "triangle"; // ←丸くする
-  osc.frequency.setValueAtTime(900, time); // 少し低め
+case "ソフト":
+  osc.type = "sine";
 
-  gain.gain.setValueAtTime(0.4, time);
-  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08); // 少し長め
-
-  osc.start(time);
-  osc.stop(time + 0.08);
-  break;
-
-    case "ウッド":
-      // 木っぽい自然な音
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(500, time);
-      gain.gain.setValueAtTime(0.5, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
-      osc.start(time);
-      osc.stop(time + 0.12);
-      break;
-
-
-case "クリック":
-default:
-  // 柔らかいクリック（高級感）
-  osc.type = "sine"; // ←完全に丸い音
-  osc.frequency.setValueAtTime(1100, time); // 少しだけ高め
-
-  gain.gain.setValueAtTime(0.5, time);
-  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.1); // なめらか
-
-  osc.start(time);
-  osc.stop(time + 0.1);
-  break;
+  if (isAccent) {
+    osc.frequency.setValueAtTime(900, time);
+    gain.gain.setValueAtTime(0.6, time);
+  } else {
+    osc.frequency.setValueAtTime(600, time);
+    gain.gain.setValueAtTime(0.3, time);
   }
+
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.15);
+
+  osc.start(time);
+  osc.stop(time + 0.15);
+  break;
+
+  case "クリック":
+    osc.type = "sine";
+
+    if (isAccent) {
+      osc.frequency.setValueAtTime(1400, time);
+      gain.gain.setValueAtTime(0.8, time);
+    } else {
+      osc.frequency.setValueAtTime(1000, time);
+      gain.gain.setValueAtTime(0.4, time);
+    }
+
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.1);
+
+    osc.start(time);
+    osc.stop(time + 0.1);
+    break;
+
+  case "ティック":
+    osc.type = "triangle";
+
+    if (isAccent) {
+      osc.frequency.setValueAtTime(1100, time);
+      gain.gain.setValueAtTime(0.7, time);
+    } else {
+      osc.frequency.setValueAtTime(800, time);
+      gain.gain.setValueAtTime(0.3, time);
+    }
+
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
+
+    osc.start(time);
+    osc.stop(time + 0.08);
+    break;
+
+case "ウッド":
+  osc.type = "triangle";
+
+  if (isAccent) {
+    // 1拍目（コツッ！って強め）
+    osc.frequency.setValueAtTime(700, time);
+    gain.gain.setValueAtTime(0.7, time);
+  } else {
+    // 通常拍
+    osc.frequency.setValueAtTime(500, time);
+    gain.gain.setValueAtTime(0.4, time);
+  }
+
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+
+  osc.start(time);
+  osc.stop(time + 0.12);
+  break;
+
+}
 }
 
 /* =========================
    UI鼓動アニメーション予約
 ========================= */
-function scheduleVisualBeat(time) {
+function scheduleVisualBeat(time, beatIndex) {
   if (!audioCtx) return;
 
   const delayMs = Math.max(0, (time - audioCtx.currentTime) * 1000);
 
   const addId = setTimeout(() => {
     playBtn.classList.add("beat");
+
+      if (beatDisplay) {
+    beatDisplay.textContent = beatIndex + 1;
+
+  }
+
+    const display = document.querySelector(".beat-display");
+
+if (display) {
+  display.textContent = beatIndex + 1;
+
+  // アニメーション
+  display.classList.add("active");
+
+  setTimeout(() => {
+    display.classList.remove("active");
+  }, 100);
+}
+
+    // ドット更新
+    const dots = document.querySelectorAll(".beat-dot");
+
+    dots.forEach((dot, i) => {
+      dot.classList.remove("active", "accent");
+
+      if (i === beatIndex) {
+        if (i === 0) {
+          dot.classList.add("accent"); // 強拍
+        } else {
+          dot.classList.add("active");
+        }
+      }
+    });
 
     const removeId = setTimeout(() => {
       playBtn.classList.remove("beat");
@@ -347,15 +432,62 @@ function scheduleVisualBeat(time) {
   visualTimeouts.push(addId);
 }
 
-function clearVisualTimeouts() {
-  visualTimeouts.forEach((id) => clearTimeout(id));
-  visualTimeouts = [];
-  playBtn.classList.remove("beat");
+
+/* =========================
+   UI描画：拍ボタン
+========================= */
+function renderBeatButtons() {
+  if (!beatSelector) return;
+
+  beatSelector.innerHTML = "";
+
+  for (let i = beatStart; i < beatStart + beatCount; i++) {
+    if (i > 10) break;
+
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.className = "beat-btn";
+
+    if (i === beatsPerBar) {
+      btn.classList.add("active");
+    }
+
+    btn.onclick = () => {
+      setBeats(i);
+      renderBeatButtons();
+    };
+
+    beatSelector.appendChild(btn);
+  }
 }
 
 /* =========================
-   イベント
+   ドット生成
 ========================= */
+function renderBeatDots() {
+  const container = document.getElementById("beatDots");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  for (let i = 0; i < beatsPerBar; i++) {
+    const dot = document.createElement("div");
+    dot.className = "beat-dot";
+    container.appendChild(dot);
+  }
+}
+
+/* =========================
+   UIイベント：拍数変更
+========================= */
+function setBeats(val) {
+  beatsPerBar = val;
+  currentBeat = 0;
+
+  renderBeatButtons();
+  renderBeatDots(); 
+
+}
 
 // サウンド切替
 soundButtons.forEach((btn) => {
@@ -369,6 +501,26 @@ soundButtons.forEach((btn) => {
     await initAudio();
   });
 });
+
+// 矢印
+if (leftArrow) {
+  leftArrow.onclick = () => {
+    if (beatStart > 1) {
+      beatStart--;
+      renderBeatButtons();
+    }
+  };
+}
+
+if (rightArrow) {
+  rightArrow.onclick = () => {
+    if (beatStart + beatCount <= 10) {
+      beatStart++;
+      renderBeatButtons();
+    }
+  };
+}
+
 
 // スライダー：触り始め
 slider.addEventListener("mousedown", () => {
@@ -483,3 +635,9 @@ window.addEventListener("focus", async () => {
    初期化
 ========================= */
 updateBpm(bpm);
+
+// 拍表示の初期値
+document.getElementById("beatDisplay").textContent = 1;
+
+renderBeatButtons();
+renderBeatDots();
