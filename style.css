@@ -13,7 +13,7 @@ body {
 @media (max-width: 768px) {
   body {
     justify-content: flex-start;
-    padding: 40px 20px; 
+    padding: 15px 20px; 
   }
 }
 
