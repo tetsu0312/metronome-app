@@ -5,6 +5,7 @@ let isDragging = false;
 let beatsPerBar = 4; // ← デフォルト4拍子
 let currentBeat = 0; // ← 今何拍目か
 let isAdjusting = false;
+let restartTimeout = null; // ← 再同期の遅延用
 
 // 要素取得
 const bpmEl = document.getElementById("bpm");
@@ -38,8 +39,8 @@ let audioCtx = null;
 let nextNoteTime = 0;
 let schedulerWorker = null;
 let fallbackTimer = null;
-const lookahead = 25; // msごとにスケジューラ確認
-const scheduleAheadTime = 0.2; // 200ms先まで予約
+const lookahead = 10; // msごとにスケジューラ確認
+const scheduleAheadTime = 0.03; // 30ms先まで予約
 let visualTimeouts = [];
 
 /* =========================
@@ -131,9 +132,16 @@ function updateBpm(val) {
 
   applyColor();
 
-  // 再生中でドラッグ中でなければ、次拍から新テンポに寄せる
-  if (isPlaying && !isDragging && !isAdjusting) {
-    restartMetronome();
+  // =========================
+  // BPM変更時：1秒後に完全リスタート
+  // =========================
+  if (isPlaying) {
+    if (restartTimeout) clearTimeout(restartTimeout);
+
+    restartTimeout = setTimeout(async () => {
+      stop();        // ← 予約ごとリセット
+      await start(); // ← 1拍目から再開
+    }, 1000);
   }
 }
 
@@ -225,11 +233,19 @@ async function start() {
   isPlaying = true;
   playBtn.textContent = "■";
 
+  currentBeat = 0;
+
   // 少し先からスタートさせると安定しやすい
-  nextNoteTime = audioCtx.currentTime + 0.05;
+  nextNoteTime = audioCtx.currentTime + 0.1;
 
   startSchedulerLoop();
 }
+
+function clearVisualTimeouts() {
+  visualTimeouts.forEach((id) => clearTimeout(id));
+  visualTimeouts = [];
+}
+
 
 function stop() {
   isPlaying = false;
@@ -237,15 +253,22 @@ function stop() {
 
   stopSchedulerLoop();
   clearVisualTimeouts();
+
+  nextNoteTime = 0; 
+  currentBeat = 0;
+  schedulerWorker = null;
 }
 
 function restartMetronome() {
   if (!isPlaying || !audioCtx) return;
 
-  // すでに予約済みの音はキャンセルできないので、
-  // 少し先から新テンポで再同期する
-  nextNoteTime = audioCtx.currentTime + 0.05;
+  // 👇 まずリセット
+  currentBeat = 0;
+
+  // 👇 未来を完全リスタート
+  nextNoteTime = audioCtx.currentTime + 0.1;
 }
+
 
 /* =========================
    次の拍を計算
@@ -277,6 +300,7 @@ function scheduler() {
    1拍分を予約
 ========================= */
 function scheduleBeat(time) {
+  console.log("beat:", currentBeat);
   const isAccent = currentBeat === 0;
 
   scheduleSound(time, isAccent);
@@ -483,12 +507,32 @@ function renderBeatDots() {
 ========================= */
 function setBeats(val) {
   beatsPerBar = val;
+
+  // ① 拍リセット（必須）
   currentBeat = 0;
 
+  // UI更新
   renderBeatButtons();
-  renderBeatDots(); 
+  renderBeatDots();
 
+  // ② 再生中なら「1秒後に再スタート」
+  if (isPlaying) {
+    // すでに予約あったらキャンセル
+    if (restartTimeout) {
+      clearTimeout(restartTimeout);
+    }
+
+    // 一旦止める（←ここ重要！）
+    stop();
+
+    // 0.5秒後に再スタート
+    restartTimeout = setTimeout(async () => {
+      await start();
+    }, 500);
+  }
 }
+
+
 
 // サウンド切替
 soundButtons.forEach((btn) => {
@@ -546,18 +590,12 @@ slider.addEventListener("input", (e) => {
 slider.addEventListener("change", () => {
   isDragging = false;
 
-  if (isPlaying) {
-    restartMetronome();
-  }
 });
 
 // スライダー：離した時（iOS）
 slider.addEventListener("touchend", () => {
   isDragging = false;
 
-  if (isPlaying) {
-    restartMetronome();
-  }
 });
 
 // =========================
@@ -574,9 +612,6 @@ plusBtn.addEventListener("mouseup", () => {
   isAdjusting = false;
 
   // 指離したタイミングで1回だけ再同期
-  if (isPlaying) {
-    restartMetronome();
-  }
 });
 
 // クリック（値変更）
@@ -598,9 +633,6 @@ minusBtn.addEventListener("mousedown", () => {
 minusBtn.addEventListener("mouseup", () => {
   isAdjusting = false;
 
-  if (isPlaying) {
-    restartMetronome();
-  }
 });
 
 // クリック（値変更）
@@ -616,7 +648,6 @@ plusBtn.addEventListener("touchstart", () => {
 
 plusBtn.addEventListener("touchend", () => {
   isAdjusting = false;
-  if (isPlaying) restartMetronome();
 });
 
 minusBtn.addEventListener("touchstart", () => {
@@ -625,7 +656,6 @@ minusBtn.addEventListener("touchstart", () => {
 
 minusBtn.addEventListener("touchend", () => {
   isAdjusting = false;
-  if (isPlaying) restartMetronome();
 });
 
 
