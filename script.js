@@ -1,6 +1,6 @@
 let bpm = 100;
 let isPlaying = false;
-let soundType = "click";
+let soundType = "ソフト";
 let isDragging = false;
 
 // 要素取得
@@ -274,40 +274,51 @@ function scheduleSound(time) {
   osc.connect(gain);
   gain.connect(audioCtx.destination);
 
+  gain.gain.cancelScheduledValues(time);
+
   switch (soundType) {
-    case "beep":
+    case "ソフト":
+      // やわらかい丸い音
       osc.type = "sine";
-      osc.frequency.setValueAtTime(1000, time);
+      osc.frequency.setValueAtTime(700, time);
+      gain.gain.setValueAtTime(0.4, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+      osc.start(time);
+      osc.stop(time + 0.15);
       break;
 
-    case "wood":
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(600, time);
-      break;
-
-    case "digital":
-      osc.type = "sawtooth";
+    case "ティック":
+      // シャープで短い音
+      osc.type = "square";
       osc.frequency.setValueAtTime(1200, time);
+      gain.gain.setValueAtTime(0.6, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+      osc.start(time);
+      osc.stop(time + 0.05);
       break;
 
-    case "mix":
-      osc.type = "square";
-      osc.frequency.setValueAtTime(900, time);
+    case "ウッド":
+      // 木っぽい自然な音
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(500, time);
+      gain.gain.setValueAtTime(0.5, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+      osc.start(time);
+      osc.stop(time + 0.12);
       break;
 
-    case "click":
+
+    case "クリック":
     default:
+      // 高級感あるはっきりしたクリック
       osc.type = "square";
-      osc.frequency.setValueAtTime(800, time);
+      osc.frequency.setValueAtTime(1500, time);
+      gain.gain.setValueAtTime(0.7, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+      osc.start(time);
+      osc.stop(time + 0.08);
       break;
   }
-
-  gain.gain.cancelScheduledValues(time);
-gain.gain.setValueAtTime(0.5, time);
-gain.gain.linearRampToValueAtTime(0, time + noteLength);
-
-  osc.start(time);
-  osc.stop(time + noteLength);
 }
 
 /* =========================
