@@ -13,11 +13,11 @@ body {
 /* カード */
 .card {
   width: 100%;
-  max-width: 520px;
+  max-width: 500px;
   background: white;
   border-radius: 20px;
 
-  padding: 40px 32px 50px;
+  padding: 40px 26px 50px;
 
   margin: 0 12px;
 
