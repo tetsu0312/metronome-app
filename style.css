@@ -38,8 +38,9 @@ body {
 /* カードスマホ */
 @media (max-width: 768px) {
   .card {
-    width: 100%;       /* ← フル幅にする */
-    max-width: none;   /* ← 制限解除 */
+    width: calc(100% - 24px); /* ←ここ超重要 */
+    margin: 0 12px;           /* ←左右余白つくる */
+    max-width: none;
   }
 }
 
