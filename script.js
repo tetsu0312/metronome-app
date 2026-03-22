@@ -333,10 +333,10 @@ case "ソフト":
 
   if (isAccent) {
     osc.frequency.setValueAtTime(900, time);
-    gain.gain.setValueAtTime(0.6, time);
+    gain.gain.setValueAtTime(0.85, time);
   } else {
     osc.frequency.setValueAtTime(600, time);
-    gain.gain.setValueAtTime(0.3, time);
+    gain.gain.setValueAtTime(0.55, time);
   }
 
   gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.15);
@@ -350,10 +350,10 @@ case "ソフト":
 
     if (isAccent) {
       osc.frequency.setValueAtTime(1400, time);
-      gain.gain.setValueAtTime(0.8, time);
+      gain.gain.setValueAtTime(0.85, time);
     } else {
       osc.frequency.setValueAtTime(1000, time);
-      gain.gain.setValueAtTime(0.4, time);
+      gain.gain.setValueAtTime(0.55, time);
     }
 
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.1);
@@ -367,10 +367,10 @@ case "ソフト":
 
     if (isAccent) {
       osc.frequency.setValueAtTime(1100, time);
-      gain.gain.setValueAtTime(0.7, time);
+      gain.gain.setValueAtTime(0.85, time);
     } else {
       osc.frequency.setValueAtTime(800, time);
-      gain.gain.setValueAtTime(0.3, time);
+      gain.gain.setValueAtTime(0.55, time);
     }
 
     gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.08);
@@ -385,11 +385,11 @@ case "ウッド":
   if (isAccent) {
     // 1拍目（コツッ！って強め）
     osc.frequency.setValueAtTime(700, time);
-    gain.gain.setValueAtTime(0.7, time);
+    gain.gain.setValueAtTime(0.85, time);
   } else {
     // 通常拍
     osc.frequency.setValueAtTime(500, time);
-    gain.gain.setValueAtTime(0.4, time);
+    gain.gain.setValueAtTime(0.55, time);
   }
 
   gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
