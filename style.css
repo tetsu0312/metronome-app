@@ -193,14 +193,6 @@ input[type="range"]::-webkit-slider-thumb {
   margin-bottom: 6px;
 
   text-align: center;
-
-  transform: scale(1.1);
-  transition: transform 0.1s;
-}
-
-/* 拍に合わせてちょい強調 */
-.beat-display.active {
-  transform: scale(1.25);
 }
 
 
