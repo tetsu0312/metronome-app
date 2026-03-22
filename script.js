@@ -40,7 +40,7 @@ let nextNoteTime = 0;
 let schedulerWorker = null;
 let fallbackTimer = null;
 const lookahead = 10; // msごとにスケジューラ確認
-const scheduleAheadTime = 0.03; // 30ms先まで予約
+const scheduleAheadTime = 0.05; // 50ms先まで予約
 let visualTimeouts = [];
 
 /* =========================
@@ -125,7 +125,7 @@ function applyColor() {
    BPM更新
 ========================= */
 function updateBpm(val) {
-  bpm = Math.min(200, Math.max(60, val));
+  bpm = Math.min(200, Math.max(40, val));
 
   bpmEl.textContent = bpm;
   slider.value = bpm;
